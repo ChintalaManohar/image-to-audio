@@ -1,0 +1,12 @@
+# node
+node_modules/
+dist/
+
+# python
+__pycache__/
+*.pyc
+.env
+
+# audio files
+*.mp3
+*.wav
