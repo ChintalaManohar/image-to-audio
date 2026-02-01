@@ -31,32 +31,27 @@ def convert_image_to_audio():
     )
 
     data = response.json()
-
-    # 🔍 LOG EVERYTHING (IMPORTANT)
-    print("OCR API RESPONSE:", data)
+    print("OCR RESPONSE:", data)   # 🔴 VERY IMPORTANT
 
     if data.get("IsErroredOnProcessing"):
         return jsonify({
-            "error": "OCR API error",
+            "error": "OCR failed",
             "details": data.get("ErrorMessage")
         }), 400
 
-    parsed = data.get("ParsedResults")
-    if not parsed:
-        return jsonify({"error": "No OCR results returned"}), 400
+    results = data.get("ParsedResults")
+    if not results:
+        return jsonify({"error": "No OCR results"}), 400
 
-    text = parsed[0].get("ParsedText", "").strip()
+    text = results[0].get("ParsedText", "").strip()
     if not text:
         return jsonify({"error": "No text detected"}), 400
 
-    audio_buffer = BytesIO()
-    gTTS(text, lang="en").write_to_fp(audio_buffer)
-    audio_buffer.seek(0)
+    audio = BytesIO()
+    gTTS(text, lang="en").write_to_fp(audio)
+    audio.seek(0)
 
-    return send_file(
-        audio_buffer,
-        mimetype="audio/mpeg"
-    )
+    return send_file(audio, mimetype="audio/mpeg"), 200
 
 
 if __name__ == "__main__":
