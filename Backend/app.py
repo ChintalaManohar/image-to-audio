@@ -1,34 +1,43 @@
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
-from PIL import Image
 from gtts import gTTS
 from io import BytesIO
-import easyocr
+import requests
 import os
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize OCR reader once
-reader = easyocr.Reader(['en'], gpu=False)
+OCR_API_KEY = os.environ.get("OCR_API_KEY")
 
 @app.route("/convert", methods=["POST"])
 def convert_image_to_audio():
     if "image" not in request.files:
         return jsonify({"error": "No image uploaded"}), 400
 
-    image = Image.open(request.files["image"]).convert("RGB")
+    image_file = request.files["image"]
 
-    # OCR
-    results = reader.readtext(image)
-    cleaned_text = " ".join([res[1] for res in results])
+    response = requests.post(
+        "https://api.ocr.space/parse/image",
+        files={"file": image_file},
+        data={
+            "apikey": OCR_API_KEY,
+            "language": "eng"
+        }
+    )
 
-    if not cleaned_text.strip():
-        return jsonify({"error": "No text found in image"}), 400
+    data = response.json()
 
-    # Text to Speech
+    try:
+        extracted_text = data["ParsedResults"][0]["ParsedText"].strip()
+    except:
+        return jsonify({"error": "OCR failed"}), 500
+
+    if not extracted_text:
+        return jsonify({"error": "No text found"}), 400
+
     audio_buffer = BytesIO()
-    tts = gTTS(cleaned_text, lang="en")
+    tts = gTTS(extracted_text, lang="en")
     tts.write_to_fp(audio_buffer)
     audio_buffer.seek(0)
 

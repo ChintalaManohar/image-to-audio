@@ -1,7 +1,4 @@
 flask
 flask-cors
-pillow
 gtts
-easyocr
-torch
-torchvision
+requests
