@@ -32,7 +32,7 @@ def convert_image_to_audio():
             data={
                 "apikey": OCR_API_KEY,
                 "language": "eng",
-                "OCREngine": 2
+                "OCREngine": 2,
             },
             timeout=30
         )
@@ -53,7 +53,7 @@ def convert_image_to_audio():
         audio.seek(0)
         return send_file(audio, mimetype="audio/mpeg"), 200
 
-    print("OCR RESPONSE:", data)
+    print("OCR RESPONSE:", data,flush=True)
 
     # 3️⃣ Handle OCR processing errors
     if data.get("IsErroredOnProcessing"):
