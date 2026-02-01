@@ -20,27 +20,21 @@ def convert_image_to_audio():
 
     image_file = request.files["image"]
 
-    try:
-        response = requests.post(
-            "https://api.ocr.space/parse/image",
-            files={"file": image_file},
-            data={
-                "apikey": OCR_API_KEY,
-                "language": "eng",
-                "isOverlayRequired": False,
-                "OCREngine": 2
-            },
-            timeout=30
-        )
-    except Exception as e:
-        return jsonify({"error": "Failed to connect to OCR API"}), 500
+    response = requests.post(
+        "https://api.ocr.space/parse/image",
+        files={"file": image_file},
+        data={
+            "apikey": OCR_API_KEY,
+            "language": "eng",
+            "OCREngine": 2
+        }
+    )
 
-    try:
-        data = response.json()
-    except Exception:
-        return jsonify({"error": "OCR API returned invalid JSON"}), 500
+    data = response.json()
 
-    # 🔍 LOGICAL ERROR HANDLING
+    # 🔍 LOG EVERYTHING (IMPORTANT)
+    print("OCR API RESPONSE:", data)
+
     if data.get("IsErroredOnProcessing"):
         return jsonify({
             "error": "OCR API error",
@@ -53,21 +47,15 @@ def convert_image_to_audio():
 
     text = parsed[0].get("ParsedText", "").strip()
     if not text:
-        return jsonify({"error": "No text detected in image"}), 400
+        return jsonify({"error": "No text detected"}), 400
 
     audio_buffer = BytesIO()
-    try:
-        gTTS(text, lang="en").write_to_fp(audio_buffer)
-    except Exception:
-        return jsonify({"error": "Text-to-speech failed"}), 500
-
+    gTTS(text, lang="en").write_to_fp(audio_buffer)
     audio_buffer.seek(0)
 
     return send_file(
         audio_buffer,
-        mimetype="audio/mpeg",
-        as_attachment=False,
-        download_name="audio.mp3"
+        mimetype="audio/mpeg"
     )
 
 
