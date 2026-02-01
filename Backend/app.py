@@ -1,29 +1,32 @@
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 from PIL import Image
-import pytesseract
 from gtts import gTTS
 from io import BytesIO
-
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+import easyocr
+import os
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize OCR reader once
+reader = easyocr.Reader(['en'], gpu=False)
 
 @app.route("/convert", methods=["POST"])
 def convert_image_to_audio():
     if "image" not in request.files:
         return jsonify({"error": "No image uploaded"}), 400
 
-    image = Image.open(request.files["image"])
+    image = Image.open(request.files["image"]).convert("RGB")
 
-    text = pytesseract.image_to_string(image, config="--psm 6")
-    cleaned_text = " ".join(text.split())
+    # OCR
+    results = reader.readtext(image)
+    cleaned_text = " ".join([res[1] for res in results])
 
-    if not cleaned_text:
-        return jsonify({"error": "No text found"}), 400
+    if not cleaned_text.strip():
+        return jsonify({"error": "No text found in image"}), 400
 
-    # 🎧 Generate audio in memory
+    # Text to Speech
     audio_buffer = BytesIO()
     tts = gTTS(cleaned_text, lang="en")
     tts.write_to_fp(audio_buffer)
@@ -37,4 +40,5 @@ def convert_image_to_audio():
     )
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
