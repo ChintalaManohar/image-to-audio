@@ -16,23 +16,46 @@ def convert_image_to_audio():
         return jsonify({"error": "No image uploaded"}), 400
 
     if not OCR_API_KEY:
-        return jsonify({"error": "OCR API key missing"}), 500
+        error_text = "OCR service is not configured."
+        audio = BytesIO()
+        gTTS(error_text, lang="en").write_to_fp(audio)
+        audio.seek(0)
+        return send_file(audio, mimetype="audio/mpeg"), 200
 
     image_file = request.files["image"]
 
-    response = requests.post(
-        "https://api.ocr.space/parse/image",
-        files={"file": image_file},
-        data={
-            "apikey": OCR_API_KEY,
-            "language": "eng",
-            "OCREngine": 2
-        }
-    )
+    # 1️⃣ Call OCR API safely
+    try:
+        response = requests.post(
+            "https://api.ocr.space/parse/image",
+            files={"file": image_file},
+            data={
+                "apikey": OCR_API_KEY,
+                "language": "eng",
+                "OCREngine": 2
+            },
+            timeout=30
+        )
+    except Exception:
+        error_text = "Unable to reach OCR service."
+        audio = BytesIO()
+        gTTS(error_text, lang="en").write_to_fp(audio)
+        audio.seek(0)
+        return send_file(audio, mimetype="audio/mpeg"), 200
 
-    data = response.json()
-    print("OCR RESPONSE:", data)   # 🔴 VERY IMPORTANT
+    # 2️⃣ Parse JSON safely
+    try:
+        data = response.json()
+    except Exception:
+        error_text = "OCR service returned an invalid response."
+        audio = BytesIO()
+        gTTS(error_text, lang="en").write_to_fp(audio)
+        audio.seek(0)
+        return send_file(audio, mimetype="audio/mpeg"), 200
 
+    print("OCR RESPONSE:", data)
+
+    # 3️⃣ Handle OCR processing errors
     if data.get("IsErroredOnProcessing"):
         error_text = "Sorry, I could not read text from the image."
         audio = BytesIO()
@@ -40,19 +63,26 @@ def convert_image_to_audio():
         audio.seek(0)
         return send_file(audio, mimetype="audio/mpeg"), 200
 
-
     results = data.get("ParsedResults")
     if not results:
-        return jsonify({"error": "No OCR results"}), 400
+        error_text = "No readable text was found in the image."
+        audio = BytesIO()
+        gTTS(error_text, lang="en").write_to_fp(audio)
+        audio.seek(0)
+        return send_file(audio, mimetype="audio/mpeg"), 200
 
     text = results[0].get("ParsedText", "").strip()
     if not text:
-        return jsonify({"error": "No text detected"}), 400
+        error_text = "The image does not contain readable text."
+        audio = BytesIO()
+        gTTS(error_text, lang="en").write_to_fp(audio)
+        audio.seek(0)
+        return send_file(audio, mimetype="audio/mpeg"), 200
 
+    # 4️⃣ Normal success path
     audio = BytesIO()
     gTTS(text, lang="en").write_to_fp(audio)
     audio.seek(0)
-
     return send_file(audio, mimetype="audio/mpeg"), 200
 
 
