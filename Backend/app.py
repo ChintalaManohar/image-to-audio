@@ -34,10 +34,12 @@ def convert_image_to_audio():
     print("OCR RESPONSE:", data)   # 🔴 VERY IMPORTANT
 
     if data.get("IsErroredOnProcessing"):
-        return jsonify({
-            "error": "OCR failed",
-            "details": data.get("ErrorMessage")
-        }), 400
+        error_text = "Sorry, I could not read text from the image."
+        audio = BytesIO()
+        gTTS(error_text, lang="en").write_to_fp(audio)
+        audio.seek(0)
+        return send_file(audio, mimetype="audio/mpeg"), 200
+
 
     results = data.get("ParsedResults")
     if not results:
