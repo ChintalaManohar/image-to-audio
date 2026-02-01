@@ -27,15 +27,23 @@ def convert_image_to_audio():
     # 1️⃣ Call OCR API safely
     try:
         response = requests.post(
-            "https://api.ocr.space/parse/image",
-            files={"file": image_file},
-            data={
-                "apikey": OCR_API_KEY,
-                "language": "eng",
-                "OCREngine": 2,
-            },
-            timeout=30
+    "https://api.ocr.space/parse/image",
+    files={
+        "file": (
+            image_file.filename,
+            image_file.stream,
+            image_file.mimetype
         )
+    },
+    data={
+        "apikey": OCR_API_KEY,
+        "language": "eng",
+        "OCREngine": 2,
+        "scale": True
+    },
+    timeout=30
+)
+
     except Exception:
         error_text = "Unable to reach OCR service."
         audio = BytesIO()
